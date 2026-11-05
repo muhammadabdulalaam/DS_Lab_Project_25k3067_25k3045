@@ -11,8 +11,120 @@
 #include <algorithm>//for remove() to cleanup filename
 #include <filesystem>//access music folder
 #include <vector>//storing folder filenames w
+#include <thread>//thread and chrono are both just to give processor small breaks while playing song to not max usage
+#include <chrono>
 namespace fs= std::filesystem;
 using namespace std;
+
+
+//PLAYLIST(DOUBLY LINKED CIRCULAr LINKEDLIST): 25K-3067 Muhammad Abdul Alaam
+class PNode{
+	public:
+		string songname;
+		PNode* prev;
+		PNode* next;
+		PNode(){
+			songname= "NULL";
+			prev= NULL;
+			next=NULL;	
+		}
+		PNode(string name){
+			songname= name;
+			prev=NULL;
+			next=NULL;
+		}
+};
+class Playlist{
+	public:
+		PNode* head;
+		PNode* tail;
+		int size;
+		Playlist(){
+			head= NULL;
+			tail= NULL;
+			size=0;
+		}
+		
+		void insert(int index, string name){
+			PNode* temp= new PNode(name);	
+			if (head==NULL){//if nothing in playlist ignore index and create at start
+				head=temp;
+				tail= temp;
+				head->prev= tail;
+				head->next=tail;
+				tail->prev= head;
+				tail->next= head;
+				size=1;
+				return;
+			}
+			PNode* curr= head;
+			for (int i=0; i<index-1; i++){
+				if (curr->next==head){
+					tail->next= temp;
+					temp->prev= tail;
+					tail= tail->next;
+					tail->next= head;
+					head->prev= tail;
+					size++;
+					return;
+				}
+				curr=curr->next;
+			}
+			curr->next->prev=temp;
+			temp->next= curr->next;
+			temp->prev= curr;
+			curr->next= temp;
+			size++;
+		}
+		
+		void remove(int index){
+			if (head==NULL){
+				return;
+			}
+			PNode* curr= head;
+			for (int i=0; i<index; i++){
+				if (curr->next==head){
+					tail= tail->prev;
+					tail->next=head;
+					head->prev=tail;
+					curr->prev=NULL;
+					curr->next=NULL;
+					delete curr;
+					size--;
+					return;
+				}
+				curr= curr->next;
+			}
+			curr->prev->next= curr->next;
+			curr->next->prev= curr->prev;
+			curr->prev=NULL;
+			curr->next=NULL;
+			delete curr;
+			size--;
+		}
+		
+		void display(){
+			PNode* curr=head;
+			for (int i=0; i<size; i++){
+				cout<<i+1<<"-"<<curr->songname<<endl;
+				curr=curr->next;
+			}
+		}	
+};
+//PLAYLIST STRUCTURE END
+
+
+
+//25K-3045 RAHIM NAWAB'S SECTION START
+
+
+
+//END
+
+
+void clearScreen() {
+    std::cout << "\033[2J\033[1;1H";
+}
 
 int main() {
 	string folder; //store folder path
@@ -71,9 +183,12 @@ int main() {
     }
 
     ma_sound_start(&sound);
-	cout << "Playing audio";
-
-    cin.get();
+    clearScreen();
+    cout << "Playing audio";
+    while(!ma_sound_at_end(&sound)){
+    	this_thread::sleep_for(chrono::milliseconds(100)); //pause processing for small breaks or cpu will be burdened
+	}
+	cout<<"Ended."<<endl;
 
     ma_sound_uninit(&sound);
     ma_engine_uninit(&engine);
