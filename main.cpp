@@ -7,10 +7,17 @@
 #include <iostream>
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
+#include <string>
+#include <algorithm>//for remove() to cleanup filename
 using namespace std;
 
 int main() {
-    char* filename= R"()";
+	string filename;
+	cout<<"ENter filename:"<<endl;
+	getline(cin, filename);
+	filename.erase(remove(filename.begin(), filename.end(), '"'), filename.end());
+
+    cout<<filename<<endl;
     
     ma_result result;
     ma_engine engine;
@@ -19,7 +26,7 @@ int main() {
         return -1;
     }
     ma_sound sound;
-    result = ma_sound_init_from_file(&engine, filename, 0, NULL, NULL, &sound);
+    result = ma_sound_init_from_file(&engine, filename.c_str(), 0, NULL, NULL, &sound);
     if (result != MA_SUCCESS) {
         ma_engine_uninit(&engine);
         return -1;
