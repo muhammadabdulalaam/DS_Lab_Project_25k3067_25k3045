@@ -252,23 +252,103 @@ class Playlist{
 				cout<<"Playlist Empty"<<endl;
 			}
 		}	
+		
+		void play(string folder,ma_engine* engine){
+			PNode* curr=head;
+			char keypress='\0';
+			do{
+				bool auto_forward=true;
+				string filepath = folder +"/"+curr->songname; //make full path
+				ma_sound sound;
+			    ma_result result = ma_sound_init_from_file(engine, filepath.c_str(), 0, NULL, NULL, &sound);
+			    if (result != MA_SUCCESS) {
+			        return;
+			    }
+			    ma_sound_start(&sound);
+			    bool currentlyPlaying= true;
+			    clearScreen();
+			    cout << "Playing '"+curr->songname+"'"<<endl;
+				cout<<"Press spacebar to pause/resume"<<endl;
+				cout<<"Press Q to stop playing"<<endl;
+				cout<<"Press Arrow keys: < for previous song, > for next song"<<endl;
+				while(!ma_sound_at_end(&sound)){
+			    	this_thread::sleep_for(chrono::milliseconds(50)); //pause processing for small breaks or cpu will be burdened
+			    	if (kbhit()){
+			    		keypress= _getch();
+			    		if (keypress==' '){
+			    			if (currentlyPlaying){
+			    				ma_sound_stop(&sound);
+			    				currentlyPlaying=false;
+							}else{
+								ma_sound_start(&sound);
+								currentlyPlaying=true;
+							}	
+						}else if(keypress=='q'||keypress=='Q'){
+							auto_forward=false;
+							break;
+						}else if(keypress==(char)0||keypress==(char)224){//since normal keys are between, must mean special key, so theres 2 bytes instead of 1
+							char spkey= _getch();//read 2ns byte
+							if (spkey==(char)75){//left arrow
+								curr=curr->prev;
+								auto_forward=false;
+								break;
+							}else if (spkey==(char)77){//right arrow
+								curr=curr->next;
+								auto_forward= false;
+								break;
+							}
+						}
+					}
+					
+				}
+				ma_sound_uninit(&sound);
+				if (auto_forward)curr=curr->next;
+			}while (keypress!='Q' && keypress!='q');
+			
+		}
 };
 
 Playlist PL;//GLOBAL PLAYLIST OBJECT
+void savePlaylist(){
+	ofstream PlaylistTxt("Playlist.txt");
+	if (PlaylistTxt.is_open()){
+		PNode* curr=PL.head;
+		while (curr!=PL.tail){
+			PlaylistTxt << curr->songname <<endl;
+			curr= curr->next;
+		}
+		PlaylistTxt << curr->songname <<endl; //tail
+	}
+}
+void getExistingPlaylist(){
+	if (PL.head==NULL){
+		ifstream PlaylistTxt("Playlist.txt");
+		if (PlaylistTxt.is_open()){
+			string line;
+			int index=0;
+			while (getline(PlaylistTxt, line)){
+				PL.insert(index, line);
+			}
+		}
+	}
+}
   
 
-void  beginPlaylist(string folder, string FileNamesArray[], int nfiles){
+void  beginPlaylist(string folder, string FileNamesArray[], int nfiles, ma_engine* engine){
 	int playlistChoice=0;
 	do{                                                                 
 		clearScreen();
 		cout<<"Select playlist function:"<<endl;
-		cout<<"1. Add to playlist"<<endl;
-		cout<<"2. Play playlist"<<endl;
-		cout<<"3. Return to main menu"<<endl;
+		cout<<"1. Play Playlist"<<endl;
+		cout<<"2. Add to playlist"<<endl;
+		cout<<"3. Remove from playlist"<<endl;
+		cout<<"4. RETURN TO MAIN MENU"<<endl;
 		cin>>playlistChoice;
 		getchar();
 		switch (playlistChoice){
-			case 1:
+			case 1:   
+				PL.play(folder, engine);  
+			case 2:
 				cout<<"All Songs:"<<endl<<endl;//list song s
 				for (int i=0; i<nfiles; i++){
 					cout<<i+1<<"-"<<FileNamesArray[i]<<endl;
@@ -284,14 +364,24 @@ void  beginPlaylist(string folder, string FileNamesArray[], int nfiles){
 				}
 				PL.display();
 				int index;
-				cout<<"Enter where to insert song"<<endl;
+				cout<<"Enter position to insert song"<<endl;
 				cin>>index;
 				getchar();
 				PL.insert(index-1, FileNamesArray[songchoice-1]);
+				savePlaylist();
 				break;
-			//case 2:                                       
+			case 3:
+				PL.display();
+				cout<<"Enter song number to delete"<<endl;
+				cin>>index;
+				getchar();
+				PL.remove(index-1);
+				savePlaylist();
+				break;
+			
+			                                  
 		}           
-	}while(playlistChoice!=3);
+	}while(playlistChoice!=4);
 }
 	             
 //PLAYLIST STRUCTURE END
@@ -386,6 +476,7 @@ folder_initialization://label so if user changes music folder program can jump b
 	}
 	//FOLDER INITIALIZING END (filenames extracted into array now we only use that)
 	
+	getExistingPlaylist();
 	int choice=0;
 	cout<<"Welcome to Structured Sound!"<<endl<<endl;
 	
@@ -406,7 +497,7 @@ folder_initialization://label so if user changes music folder program can jump b
 				directPlay(folder, FileNamesArray, nfiles, &engine);
 				break;
 			case 2:
-				beginPlaylist(folder,FileNamesArray, nfiles);
+				beginPlaylist(folder,FileNamesArray, nfiles, &engine);
 				break;
 			case 3:
 				saveFolder();
