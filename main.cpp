@@ -10,11 +10,124 @@
 #include <string>//folder path string fixing
 #include <algorithm>//for remove() to cleanup filename
 #include <filesystem>//access music folder
-#include <vector>//storing folder filenames w
+#include <vector>//ONLY FOR INITIALLY storing folder filenames, then array is used
 #include <thread>//thread and chrono are both just to give processor small breaks while playing song to not max usage
 #include <chrono>
+#include <fstream>//file handling of saved folderpath name
+#include <conio.h>//getch() for reading keypress 
 namespace fs= std::filesystem;
 using namespace std;
+
+
+
+
+/*NOTES VVVVVVV
+1.  _getch() and spacebar pausing and playing
+2. next previous arrowkeys playlist
+ */
+
+
+
+//NON DATA STRUCTURE FUNCTIONS START:
+void clearScreen() {
+    std::cout << "\033[2J\033[1;1H";
+}
+
+
+
+
+
+void directPlay(string folder, string FileNamesArray[], int nfiles, ma_engine* engine){//choice=1 (play a song directly)
+	cout<<"All Songs:"<<endl<<endl;//list song s
+	for (int i=0; i<nfiles; i++){
+		cout<<i+1<<"-"<<FileNamesArray[i]<<endl;
+	}
+	cout<<nfiles+1<<"- RETURN TO MAIN MENU"<<endl;
+	
+	int songchoice;//select song to play from lisr
+	cout<<"Enter song number to play"<<endl;
+	cin>>songchoice;
+	getchar();//remov \n leftover from cin
+	if (songchoice<1||songchoice>nfiles){
+		return;
+	}
+	string filename= FileNamesArray[songchoice-1];
+	string filepath = folder +"/"+filename; //make full path
+	ma_sound sound;
+    ma_result result = ma_sound_init_from_file(engine, filepath.c_str(), 0, NULL, NULL, &sound);
+    if (result != MA_SUCCESS) {
+        return;
+    }
+    ma_sound_start(&sound);
+    bool currentlyPlaying= true;
+    clearScreen();
+    cout << "Playing '"+filename+"'"<<endl;
+	cout<<"Press spacebar to pause/resume"<<endl;
+	cout<<"Press Q to stop playing"<<endl;
+	while(!ma_sound_at_end(&sound)){
+    	this_thread::sleep_for(chrono::milliseconds(50)); //pause processing for small breaks or cpu will be burdened
+    	if (kbhit()){
+    		char keypress= _getch();
+    		if (keypress==' '){
+    			if (currentlyPlaying){
+    				ma_sound_stop(&sound);
+    				currentlyPlaying=false;
+				}else{
+					ma_sound_start(&sound);
+					currentlyPlaying=true;
+				}	
+			}else if(keypress=='q'||_getch()=='Q'){
+				break;
+			}
+		}
+		
+	}
+	ma_sound_uninit(&sound);
+	
+}
+
+string getFolderPath(){
+	clearScreen();
+	//FOLDER INITIALILIZING START
+	string folder; //store folder path
+	do{
+		cout<<"Enter Music Folder Path:"<<endl;
+		getline(cin, folder);
+		folder.erase(remove(folder.begin(), folder.end(), '"'), folder.end());//get rid of quotes when copypasting path
+	    if (!fs::exists(folder)||!fs::is_directory(folder)){//folder not exist/folder is not folder
+    		cout<<"Invalid or does not exit"<<endl;
+		}
+	}while(!fs::exists(folder)||!fs::is_directory(folder));
+	return folder;
+}
+
+string saveFolder(){
+	string folder= getFolderPath();
+	ofstream FolderPathTxt("MusicFolderPath.txt");
+	if (FolderPathTxt.is_open()){
+		FolderPathTxt << folder;
+		FolderPathTxt.close();
+		cout<<"Folder path saved"<<endl;
+		FolderPathTxt.close();
+	}else{
+		cout<<"Folder path failed to save"<<endl;
+	}
+	return folder;
+}
+
+string checkFolderSaved(){//if at start of program, cant find folder path previously saved ask for path and save. If found return saved path
+	ifstream FolderPathTxt("MusicFolderPath.txt");
+	string folder;
+	if (FolderPathTxt.is_open()){
+		getline(FolderPathTxt, folder);
+		FolderPathTxt.close();
+	}
+	if (folder.empty() || !fs::exists(folder) || !fs::is_directory(folder)){
+		folder= saveFolder();
+	}
+	return folder;
+}
+//FUNCTIONS END
 
 
 //PLAYLIST(DOUBLY LINKED CIRCULAr LINKEDLIST): 25K-3067 Muhammad Abdul Alaam
@@ -57,9 +170,19 @@ class Playlist{
 				size=1;
 				return;
 			}
+			if (index<=0){//if use enters position 1 then for loop does not run as index=0, i<index-1=-1
+				temp->next= head;
+				temp->prev= tail;
+				head->prev= temp;
+				tail->next= temp;
+				head= temp;
+				size++;
+				return;
+			}
 			PNode* curr= head;
 			for (int i=0; i<index-1; i++){
-				if (curr->next==head){
+			
+				if (curr->next==head){//if user entered index bigger than list size just insert at end rather than throw "invalid index"
 					tail->next= temp;
 					temp->prev= tail;
 					tail= tail->next;
@@ -68,12 +191,14 @@ class Playlist{
 					size++;
 					return;
 				}
+				
 				curr=curr->next;
 			}
 			curr->next->prev=temp;
 			temp->next= curr->next;
 			temp->prev= curr;
 			curr->next= temp;
+			if (curr==tail) tail= temp;
 			size++;
 		}
 		
@@ -84,61 +209,168 @@ class Playlist{
 			PNode* curr= head;
 			for (int i=0; i<index; i++){
 				if (curr->next==head){
-					tail= tail->prev;
-					tail->next=head;
-					head->prev=tail;
-					curr->prev=NULL;
-					curr->next=NULL;
-					delete curr;
-					size--;
-					return;
+					break;
 				}
 				curr= curr->next;
 			}
-			curr->prev->next= curr->next;
-			curr->next->prev= curr->prev;
-			curr->prev=NULL;
-			curr->next=NULL;
-			delete curr;
+			
+			if (size==1){
+				delete curr;
+				head=NULL;
+				tail= NULL;
+				size= 0;
+				return;
+			}
+			if (curr==head){
+				head= curr->next;
+				curr->prev->next= curr->next;
+				curr->next->prev= curr->prev;
+				curr->prev=NULL;
+				curr->next=NULL;
+				delete curr;
+			}if (curr==tail){
+				tail= curr->prev;
+				curr->prev->next= curr->next;
+				curr->next->prev= curr->prev;
+				curr->prev=NULL;
+				curr->next=NULL;
+				delete curr;
+			}
 			size--;
 		}
 		
 		void display(){
+			clearScreen();
 			PNode* curr=head;
-			for (int i=0; i<size; i++){
-				cout<<i+1<<"-"<<curr->songname<<endl;
-				curr=curr->next;
+			if (head!=NULL){
+				cout<<"Current Playlist:"<<endl;
+				for (int i=0; i<size; i++){
+					cout<<i+1<<"-"<<curr->songname<<endl;
+					curr=curr->next;
+				}
+			}else{
+				cout<<"Playlist Empty"<<endl;
 			}
 		}	
 };
+
+Playlist PL;//GLOBAL PLAYLIST OBJECT
+  
+
+void  beginPlaylist(string folder, string FileNamesArray[], int nfiles){
+	int playlistChoice=0;
+	do{                                                                 
+		clearScreen();
+		cout<<"Select playlist function:"<<endl;
+		cout<<"1. Add to playlist"<<endl;
+		cout<<"2. Play playlist"<<endl;
+		cout<<"3. Return to main menu"<<endl;
+		cin>>playlistChoice;
+		getchar();
+		switch (playlistChoice){
+			case 1:
+				cout<<"All Songs:"<<endl<<endl;//list song s
+				for (int i=0; i<nfiles; i++){
+					cout<<i+1<<"-"<<FileNamesArray[i]<<endl;
+				}
+				cout<<nfiles+1<<"- <<< BACK"<<endl;
+				
+				int songchoice;//select song to play from lisr
+				cout<<"Enter song number to add to Playlist"<<endl;
+				cin>>songchoice;
+				getchar();//remov \n leftover from cin
+				if (songchoice<1||songchoice>nfiles){
+					break;
+				}
+				PL.display();
+				int index;
+				cout<<"Enter where to insert song"<<endl;
+				cin>>index;
+				getchar();
+				PL.insert(index-1, FileNamesArray[songchoice-1]);
+				break;
+			//case 2:                                       
+		}           
+	}while(playlistChoice!=3);
+}
+	             
 //PLAYLIST STRUCTURE END
 
 
 
 //25K-3045 RAHIM NAWAB'S SECTION START
 
+void merge(string arr[], int left, int mid, int right) {
 
+    int n = right - left + 1;
+    string* temp = new string[n];
 
-//END
+    int i = left;
+    int j = mid + 1;
+    int k = 0;
 
+    while (i <= mid && j <= right) {
+        if (arr[i] <= arr[j]) {
+            temp[k] = arr[i];
+            i++;
+        }
+        else {
+            temp[k] = arr[j];
+            j++;
+        }
+        k++;
+    }
 
-void clearScreen() {
-    std::cout << "\033[2J\033[1;1H";
+    while (i <= mid) {
+        temp[k] = arr[i];
+        i++;
+        k++;
+    }
+
+    while (j <= right) {
+        temp[k] = arr[j];
+        j++;
+        k++;
+    }
+
+    for (int x = 0; x < n; x++) {
+        arr[left + x] = temp[x];
+    }
+
+    delete[] temp;
 }
 
+void mergeSort(string arr[], int left, int right) {
+
+    if (left >= right) {
+        return;
+    }
+
+    int mid = left + (right - left) / 2;
+
+    mergeSort(arr, left, mid);
+    mergeSort(arr, mid + 1, right);
+
+    merge(arr, left, mid, right);
+}
+
+
+
+//RAHIM's SECTION END
+
+
+
+
+
 int main() {
-	string folder; //store folder path
-	cout<<"Enter Music Folder Path:"<<endl;
-	getline(cin, folder);
-	folder.erase(remove(folder.begin(), folder.end(), '"'), folder.end());//get rid of quotes when copypasting path
-    //cout<<folder<<endl;
-    
-    if (!fs::exists(folder)||!fs::is_directory(folder)){//folder not exit/folder is not folder
-    	cout<<"Invalid or does not exit"<<endl;
-    	exit(1);
+	ma_engine engine;
+    if (ma_engine_init(NULL, &engine) != MA_SUCCESS) {
+        exit(1);
 	}
-	vector<string> mp3files;//all filenames go here
-	
+	                                                     
+folder_initialization://label so if user changes music folder program can jump back here and reinitialise
+	string folder= checkFolderSaved();
+	vector<string> mp3files;
 	for (auto& file : fs::directory_iterator(folder)){//for each loop going over each file in folder
 		if (file.is_regular_file()){
 			string ext = file.path().extension().string();
@@ -152,47 +384,42 @@ int main() {
 	for (int i=0; i<nfiles; i++){
 		FileNamesArray[i]= mp3files[i];
 	}
+	//FOLDER INITIALIZING END (filenames extracted into array now we only use that)
 	
-	cout<<"All Songs:"<<endl<<endl;//list song s
-	for (int i=0; i<nfiles; i++){
-		cout<<i+1<<"-"<<FileNamesArray[i]<<endl;
-	}
+	int choice=0;
+	cout<<"Welcome to Structured Sound!"<<endl<<endl;
 	
-	int choice;//select song to play from lisr
-	cout<<"Enter song number to play"<<endl;
-	cin>>choice;
-	getchar();//remov \n leftover from cin
-	if (choice<1||choice>nfiles){
-		cout<<"Invalid"<<endl;
-		exit(1);
-	}
-	string filename= FileNamesArray[choice-1];
-	filename = folder +"/"+filename; //make full path
+	do {
+		clearScreen();
+		cout<<"1. Play a song directly"<<endl;
+		cout<<"2. Playlist"<<endl;
+		cout<<"3. Change Music Folder"<<endl;
+		cout<<"4. Sort By Name"<<endl;
+		cout<<"5. EXIT"<<endl;
+		cout<<endl<<"Enter choice: ";
+		cin>>choice;
+		getchar();
+		cout<<endl;
+		
+		switch (choice){
+			case 1:
+				directPlay(folder, FileNamesArray, nfiles, &engine);
+				break;
+			case 2:
+				beginPlaylist(folder,FileNamesArray, nfiles);
+				break;
+			case 3:
+				saveFolder();
+				goto folder_initialization;
+				break;
+			case 4:
+				mergeSort(FileNamesArray, 0, nfiles - 1); // Merge sort will sort via filename
+				cout<<"Sorted"<<endl;
+		}
+	}while (choice!=5);
 	
-    ma_result result;
-    ma_engine engine;
-    result = ma_engine_init(NULL, &engine);
-    if (result != MA_SUCCESS) {
-        exit(1);
-    }
-    ma_sound sound;
-    result = ma_sound_init_from_file(&engine, filename.c_str(), 0, NULL, NULL, &sound);
-    if (result != MA_SUCCESS) {
-        ma_engine_uninit(&engine);
-        exit(1);
-    }
-
-    ma_sound_start(&sound);
-    clearScreen();
-    cout << "Playing audio";
-    while(!ma_sound_at_end(&sound)){
-    	this_thread::sleep_for(chrono::milliseconds(100)); //pause processing for small breaks or cpu will be burdened
-	}
-	cout<<"Ended."<<endl;
-
-    ma_sound_uninit(&sound);
-    ma_engine_uninit(&engine);
-
-
-   
+	
+	ma_engine_uninit(&engine);
 }
+
+                           
