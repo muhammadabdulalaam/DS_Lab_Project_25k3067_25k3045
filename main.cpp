@@ -117,6 +117,59 @@ class Playlist{
 
 //25K-3045 RAHIM NAWAB'S SECTION START
 
+void merge(string arr[], int left, int mid, int right) {
+
+    int n = right - left + 1;
+    string* temp = new string[n];
+
+    int i = left;
+    int j = mid + 1;
+    int k = 0;
+
+    while (i <= mid && j <= right) {
+        if (arr[i] <= arr[j]) {
+            temp[k] = arr[i];
+            i++;
+        }
+        else {
+            temp[k] = arr[j];
+            j++;
+        }
+        k++;
+    }
+
+    while (i <= mid) {
+        temp[k] = arr[i];
+        i++;
+        k++;
+    }
+
+    while (j <= right) {
+        temp[k] = arr[j];
+        j++;
+        k++;
+    }
+
+    for (int x = 0; x < n; x++) {
+        arr[left + x] = temp[x];
+    }
+
+    delete[] temp;
+}
+
+void mergeSort(string arr[], int left, int right) {
+
+    if (left >= right) {
+        return;
+    }
+
+    int mid = left + (right - left) / 2;
+
+    mergeSort(arr, left, mid);
+    mergeSort(arr, mid + 1, right);
+
+    merge(arr, left, mid, right);
+}
 
 
 //END
@@ -149,9 +202,12 @@ int main() {
 	}
 	string FileNamesArray[mp3files.size()]; //<----------STRING ARR FOR DATA STRUCTURESS
 	int nfiles= mp3files.size();
+	
 	for (int i=0; i<nfiles; i++){
 		FileNamesArray[i]= mp3files[i];
 	}
+	
+	mergeSort(FileNamesArray, 0, nfiles - 1); // Merge sort will sort via filename
 	
 	cout<<"All Songs:"<<endl<<endl;//list song s
 	for (int i=0; i<nfiles; i++){
@@ -192,6 +248,8 @@ int main() {
 
     ma_sound_uninit(&sound);
     ma_engine_uninit(&engine);
+    
+    delete[] FileNamesArray; // Clearing memory
 
 
    
