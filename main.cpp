@@ -117,39 +117,48 @@ class Playlist{
 
 //25K-3045 RAHIM NAWAB'S SECTION START
 
-void merge(vector<string>& arr, int left, int mid, int right) {
-    vector<string> temp;
+void merge(string arr[], int left, int mid, int right) {
+
+    int n = right - left + 1;
+    string* temp = new string[n];
 
     int i = left;
     int j = mid + 1;
+    int k = 0;
 
     while (i <= mid && j <= right) {
         if (arr[i] <= arr[j]) {
-            temp.push_back(arr[i]);
+            temp[k] = arr[i];
             i++;
         }
         else {
-            temp.push_back(arr[j]);
+            temp[k] = arr[j];
             j++;
         }
+        k++;
     }
 
     while (i <= mid) {
-        temp.push_back(arr[i]);
+        temp[k] = arr[i];
         i++;
+        k++;
     }
 
     while (j <= right) {
-        temp.push_back(arr[j]);
+        temp[k] = arr[j];
         j++;
+        k++;
     }
 
-    for (int k = 0; k < temp.size(); k++) {
-        arr[left + k] = temp[k];
+    for (int x = 0; x < n; x++) {
+        arr[left + x] = temp[x];
     }
+
+    delete[] temp;
 }
 
-void mergeSort(vector<string>& arr, int left, int right) {
+void mergeSort(string arr[], int left, int right) {
+
     if (left >= right) {
         return;
     }
@@ -161,7 +170,6 @@ void mergeSort(vector<string>& arr, int left, int right) {
 
     merge(arr, left, mid, right);
 }
-
 
 
 //END
@@ -194,10 +202,12 @@ int main() {
 	}
 	string FileNamesArray[mp3files.size()]; //<----------STRING ARR FOR DATA STRUCTURESS
 	int nfiles= mp3files.size();
-	mergeSort(mp3files, 0, nfiles - 1); //Merge sort will sort the mp3 files via there names
+	
 	for (int i=0; i<nfiles; i++){
 		FileNamesArray[i]= mp3files[i];
 	}
+	
+	mergeSort(FileNamesArray, 0, nfiles - 1); // Merge sort will sort via filename
 	
 	cout<<"All Songs:"<<endl<<endl;//list song s
 	for (int i=0; i<nfiles; i++){
@@ -238,6 +248,8 @@ int main() {
 
     ma_sound_uninit(&sound);
     ma_engine_uninit(&engine);
+    
+    delete[] FileNamesArray; // Clearing memory
 
 
    
