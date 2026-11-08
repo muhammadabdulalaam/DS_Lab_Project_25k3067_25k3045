@@ -74,6 +74,7 @@ void directPlay(string folder, string FileNamesArray[], int nfiles, ma_engine* e
     				currentlyPlaying=false;
 				}else{
 					ma_sound_start(&sound);
+					playbackHistory.push(filename); 
 					currentlyPlaying=true;
 				}	
 			}else if(keypress=='q'||_getch()=='Q'){
@@ -281,6 +282,7 @@ class Playlist{
 			    				currentlyPlaying=false;
 							}else{
 								ma_sound_start(&sound);
+								playbackHistory.push(curr->songname);
 								currentlyPlaying=true;
 							}	
 						}else if(keypress=='q'||keypress=='Q'){
@@ -390,6 +392,7 @@ void  beginPlaylist(string folder, string FileNamesArray[], int nfiles, ma_engin
 
 //25K-3045 RAHIM NAWAB'S SECTION START
 
+// Merge Sort
 void merge(string arr[], int left, int mid, int right) {
 
     int n = right - left + 1;
@@ -443,8 +446,73 @@ void mergeSort(string arr[], int left, int right) {
 
     merge(arr, left, mid, right);
 }
+// Merge Sort End
 
 
+// History Stack
+
+#define MAX_HISTORY 100
+
+class HistoryStack {
+private:
+    string history[MAX_HISTORY];
+    int top;
+
+public:
+    HistoryStack() {
+        top = -1;
+    }
+
+    bool isEmpty() {
+        return top == -1;
+    }
+
+    void push(string song) {
+        if (top == MAX_HISTORY - 1) {
+            cout << "History Stack is full " << endl;
+            return;
+        }
+
+        top++;
+        history[top] = song;
+    }
+
+    void pop() {
+        if (isEmpty()) {
+            cout << "History is empty " << endl;
+            return;
+        }
+
+        cout << "Removed: " << history[top] << endl;
+        top--;
+    }
+
+    void peek() {
+        if (isEmpty()) {
+            cout << "History is empty " << endl;
+            return;
+        }
+
+        cout << "Most recently played: " << history[top] << endl;
+    }
+
+    void display() {
+        if (isEmpty()) {
+            cout << "No songs have been played " << endl;
+            return;
+        }
+
+        cout << "Playback History: " << endl;
+
+        for (int i = top; i >= 0; i--) {
+            cout << history[i] << endl;
+        }
+    }
+};
+
+HistoryStack playbackHistory;
+
+// History Stack ends
 
 //RAHIM's SECTION END
 
@@ -486,7 +554,8 @@ folder_initialization://label so if user changes music folder program can jump b
 		cout<<"2. Playlist"<<endl;
 		cout<<"3. Change Music Folder"<<endl;
 		cout<<"4. Sort By Name"<<endl;
-		cout<<"5. EXIT"<<endl;
+		cout<<"5. Playback History"<<endl;
+		cout<<"6. EXIT"<<endl;
 		cout<<endl<<"Enter choice: ";
 		cin>>choice;
 		getchar();
@@ -506,8 +575,49 @@ folder_initialization://label so if user changes music folder program can jump b
 			case 4:
 				mergeSort(FileNamesArray, 0, nfiles - 1); // Merge sort will sort via filename
 				cout<<"Sorted"<<endl;
+				break;
+			case 5:
+				int historyChoice;
+				do {
+					clearScreen();
+					
+					cout << "PlayBack History " << endl;
+					cout << "1. Display History" << endl;
+                    cout << "2. View Most Recently Played Song" << endl;
+                    cout << "3. Remove Most Recent Song" << endl;
+                    cout << "4. Return to Main Menu" << endl;
+                    
+                    cout << "Enter choice: ";
+                    cin >> historyChoice;
+                    
+                    switch(historyChoice) {
+                    	case 1:
+                    		playbackHistory.display();
+                    		break;
+                    	case 2:
+                    		 playbackHistory.peek();
+                    		 break;
+                        case 3:
+                        	playbackHistory.pop();
+                        	break;
+                        case 4:
+                        	break;
+                        default:
+                        	cout << "The number you wrote is invalid " << endl;
+					}
+					if (historyChoice != 4) {
+						cout << "\nPress Enter to continue ";
+                        cin.ignore();
+                        cin.get();
+					}
+
+				} while (historyChoice != 4);
+				break;
+
+     
+			
 		}
-	}while (choice!=5);
+	}while (choice!=6);
 	
 	
 	ma_engine_uninit(&engine);
