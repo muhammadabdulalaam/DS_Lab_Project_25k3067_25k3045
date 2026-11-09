@@ -22,13 +22,12 @@ using namespace std;
 
 
 /*NOTES VVVVVVV
-1.  _getch() and spacebar pausing and playing
-2. next previous arrowkeys playlist
- */
+1.change all back options to esc to keep ui consistent
+*/
 
 
 
-//NON DATA STRUCTURE FUNCTIONS START:
+//NON DATA STRUCTURE FUNCTIONS START: 25K-3067 Muhammad Abdul Alaam
 void clearScreen() {
     std::cout << "\033[2J\033[1;1H";
 }
@@ -76,7 +75,7 @@ void directPlay(string folder, string FileNamesArray[], int nfiles, ma_engine* e
 					ma_sound_start(&sound);
 					currentlyPlaying=true;
 				}	
-			}else if(keypress=='q'||_getch()=='Q'){
+			}else if(keypress=='q'||keypress=='Q'){
 				break;
 			}
 		}
@@ -328,6 +327,7 @@ void getExistingPlaylist(){
 			int index=0;
 			while (getline(PlaylistTxt, line)){
 				PL.insert(index, line);
+				index++;
 			}
 		}
 	}
@@ -347,7 +347,8 @@ void  beginPlaylist(string folder, string FileNamesArray[], int nfiles, ma_engin
 		getchar();
 		switch (playlistChoice){
 			case 1:   
-				PL.play(folder, engine);  
+				PL.play(folder, engine); 
+				break; 
 			case 2:
 				cout<<"All Songs:"<<endl<<endl;//list song s
 				for (int i=0; i<nfiles; i++){
@@ -386,9 +387,187 @@ void  beginPlaylist(string folder, string FileNamesArray[], int nfiles, ma_engin
 	             
 //PLAYLIST STRUCTURE END
 
+//SEARCH-AS-TYPING (TRIE): 25K-3067 Muhammad Abdul Alaam
+
+int SATCount=1;//global var used in display function for displaying titles with title numbers
+string* SATTitles= new string[0];
+class SATNode{
+	public:
+		SATNode* next[27];
+		bool titleEnd;
+		string fullName;//adding after test showed full filename having dots slashes or digits cause problems we cant rebuild filename from the trie like attempted before 
+		SATNode(){
+			for (int i=0; i<27; i++){
+				next[i]= NULL;
+			}
+			titleEnd= false;
+		}
+		SATNode(bool isEnd){
+			for (int i=0; i<27; i++){
+				next[i]= NULL;
+			}
+			titleEnd= isEnd;
+		}
+};
+
+class SearchAsType{
+	public:
+		SATNode* root;
+		string search;
+		SearchAsType(){
+			root=new SATNode();
+			search="";
+		}
+		
+		
+		void insert(string title){
+			SATNode* curr= root;
+			for (int i=0; i<title.length(); i++){
+				char c= title[i];
+				int nextind;
+				if (c==' '){
+					nextind=26;
+				}else if((c>='A'&&c<='Z')||(c>='a'&&c<='z')){
+					nextind= (int)((c & 0b11011111)-'A');
+				}else{//if anything other like . / or digit dont store
+					continue;
+				}
+				if (curr->next[nextind]==NULL){
+					curr->next[nextind]= new SATNode(false);
+				}
+				curr=curr->next[nextind];
+			}
+			curr->titleEnd=true;
+			curr->fullName= title;
+		}
+		
+		void display(SATNode* root, string searchTerm){
+			if (root==NULL){
+				return;
+			}
+			if (root->titleEnd){
+				SATTitles[SATCount]=root->fullName;
+				SATCount++;
+				
+			}
+			
+			for (int i=0; i<27; i++){
+				if (root->next[i]!=NULL){
+					display(root->next[i], searchTerm);
+	
+				}
+			}
+			
+		}
+		
+		void searchDisplay(SATNode* root, string term){
+			SATNode* curr= root;
+			for (int i=0; i<term.length(); i++){
+				char c= term[i];
+				if (c!=' '){
+					c= c & 0b11011111;
+					curr= curr->next[(int)(c-'A')];
+				}else{
+					curr= curr->next[26];
+				}
+				if (curr==NULL) return;
+			}
+			display(curr, term);
+			
+		}
+		
+		void deleteTrieSAT(SATNode* root){
+			if (root==NULL)return;
+			for (int i=0; i<27; i++){
+				if (root->next[i]!=NULL){
+					deleteTrieSAT(root->next[i]);
+				}
+			}
+			delete root;
+		}
+};
+
+SearchAsType SAT; //global trie
+
+string searchAsUserTypes(){//return the number user presses to select that song
+	string searchTerm="";
+	char key;
+	do{
+		clearScreen();
+		cout<<"Search Term: "<<searchTerm;
+		SATCount= 0;
+		SAT.searchDisplay(SAT.root, searchTerm);
+		cout<<endl;
+		for (int i=0; i<SATCount; i++){
+			cout<<i+1<<"- "<<SATTitles[i]<<endl;	
+		}
+		key= _getch();
+		if (key==8 && searchTerm!=""){//8= getch() of backspace
+			searchTerm.pop_back();
+		}
+		if (key>='A' && key <='Z' || key>='a' && key<='z'|| key==' '){
+			searchTerm+=key;
+		}
+		
+	}while (key!=(char)27 && key!='\r');//27 = getch() of esc key, \r= enter
+	if (key=='\r'){
+		int songchoice= (int)key-'0';
+		cout<<"Enter the number of the song: ";
+		cin>>songchoice;
+		if (songchoice>0 && songchoice<=SATCount){
+			return SATTitles[songchoice-1];
+		}else{
+			return "NULL";
+		}
+	}
+	return "NULL";
+}
+
+void playSearched(string folder, ma_engine* engine){
+	string filename= searchAsUserTypes();
+	if (filename!="NULL"){
+		string filepath = folder +"/"+filename; //make full path
+		ma_sound sound;
+	    ma_result result = ma_sound_init_from_file(engine, filepath.c_str(), 0, NULL, NULL, &sound);
+	    if (result != MA_SUCCESS) {
+	        return;
+	    }
+	    ma_sound_start(&sound);
+	    bool currentlyPlaying= true;
+	    clearScreen();
+	    cout << "Playing '"+filename+"'"<<endl;
+		cout<<"Press spacebar to pause/resume"<<endl;
+		cout<<"Press Q to stop playing"<<endl;
+		while(!ma_sound_at_end(&sound)){
+	    	this_thread::sleep_for(chrono::milliseconds(50)); //pause processing for small breaks or cpu will be burdened
+	    	if (kbhit()){
+	    		char keypress= _getch();
+	    		if (keypress==' '){
+	    			if (currentlyPlaying){
+	    				ma_sound_stop(&sound);
+	    				currentlyPlaying=false;
+					}else{
+						ma_sound_start(&sound);
+						currentlyPlaying=true;
+					}	
+				}else if(keypress=='q'||keypress=='Q'){
+					break;
+				}
+			}
+			
+		}
+		ma_sound_uninit(&sound);
+	}
+}
+
+
+//SEARCH-AS-TYPING STRUCTURE END
+
 
 
 //25K-3045 RAHIM NAWAB'S SECTION START
+
+// Merge Sort
 
 void merge(string arr[], int left, int mid, int right) {
 
@@ -445,6 +624,72 @@ void mergeSort(string arr[], int left, int right) {
 }
 
 
+// Merge Sort End
+
+// History Stack
+
+#define MAX_HISTORY 100
+
+class HistoryStack {
+private:
+    string history[MAX_HISTORY];
+    int top;
+
+public:
+    HistoryStack() {
+        top = -1;
+    }
+
+    bool isEmpty() {
+        return top == -1;
+    }
+
+    void push(string song) {
+        if (top == MAX_HISTORY - 1) {
+            cout << "History Stack is full " << endl;
+            return;
+        }
+
+        top++;
+        history[top] = song;
+    }
+
+    void pop() {
+        if (isEmpty()) {
+            cout << "History is empty " << endl;
+            return;
+        }
+
+        cout << "Removed: " << history[top] << endl;
+        top--;
+    }
+
+    void peek() {
+        if (isEmpty()) {
+            cout << "History is empty " << endl;
+            return;
+        }
+
+        cout << "Most recently played: " << history[top] << endl;
+    }
+
+    void display() {
+        if (isEmpty()) {
+            cout << "No songs have been played " << endl;
+            return;
+        }
+
+        cout << "Playback History: " << endl;
+
+        for (int i = top; i >= 0; i--) {
+            cout << history[i] << endl;
+        }
+    }
+};
+
+HistoryStack playbackHistory;
+
+// History Stack ends
 
 //RAHIM's SECTION END
 
@@ -474,7 +719,18 @@ folder_initialization://label so if user changes music folder program can jump b
 	for (int i=0; i<nfiles; i++){
 		FileNamesArray[i]= mp3files[i];
 	}
-	//FOLDER INITIALIZING END (filenames extracted into array now we only use that)
+	//FOLDER INITIALIZING END (filenames extracted into array now we only use that
+	
+	//INITIALIZE TRIE
+	SAT.deleteTrieSAT(SAT.root); 
+	SAT.root=new SATNode();
+	for (int i=0; i<nfiles; i++){
+		SAT.insert(FileNamesArray[i]);
+	}
+	delete[] SATTitles;
+	SATTitles= new string[nfiles];
+	SATCount= 0;
+	//TRIE INITIALIZATION END
 	
 	getExistingPlaylist();
 	int choice=0;
@@ -485,8 +741,10 @@ folder_initialization://label so if user changes music folder program can jump b
 		cout<<"1. Play a song directly"<<endl;
 		cout<<"2. Playlist"<<endl;
 		cout<<"3. Change Music Folder"<<endl;
-		cout<<"4. Sort By Name"<<endl;
-		cout<<"5. EXIT"<<endl;
+		cout<<"4. Search and Play"<<endl;
+		cout<<"5. Sort By Name"<<endl;
+		cout<<"6. Playback History"<<endl;
+		cout<<"7. EXIT"<<endl;
 		cout<<endl<<"Enter choice: ";
 		cin>>choice;
 		getchar();
@@ -504,10 +762,51 @@ folder_initialization://label so if user changes music folder program can jump b
 				goto folder_initialization;
 				break;
 			case 4:
+				playSearched(folder, &engine);
+				break;
+			case 5:
 				mergeSort(FileNamesArray, 0, nfiles - 1); // Merge sort will sort via filename
 				cout<<"Sorted"<<endl;
+				break;
+			case 6:
+				int historyChoice;
+				do {
+					clearScreen();
+					
+					cout << "PlayBack History " << endl;
+					cout << "1. Display History" << endl;
+                    cout << "2. View Most Recently Played Song" << endl;
+                    cout << "3. Remove Most Recent Song" << endl;
+                    cout << "4. Return to Main Menu" << endl;
+                    
+                    cout << "Enter choice: ";
+                    cin >> historyChoice;
+                    
+                    switch(historyChoice) {
+                    	case 1:
+                    		playbackHistory.display();
+                    		break;
+                    	case 2:
+                    		 playbackHistory.peek();
+                    		 break;
+                        case 3:
+                        	playbackHistory.pop();
+                        	break;
+                        case 4:
+                        	break;
+                        default:
+                        	cout << "The number you wrote is invalid " << endl;
+					}
+					if (historyChoice != 4) {
+						cout << "\nPress Enter to continue ";
+                        cin.ignore();
+                        cin.get();
+					}
+
+				} while (historyChoice != 4);
+				break;
 		}
-	}while (choice!=5);
+	}while (choice!=7);
 	
 	
 	ma_engine_uninit(&engine);
