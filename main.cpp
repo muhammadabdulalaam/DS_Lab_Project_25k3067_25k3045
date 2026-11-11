@@ -25,6 +25,71 @@ using namespace std;
 1.change all back options to esc to keep ui consistent
 */
 
+// HISTORY STACK: 25K-3045 Rahim Nawab
+
+#define MAX_HISTORY 100
+
+class HistoryStack {
+private:
+    string history[MAX_HISTORY];
+    int top;
+
+public:
+    HistoryStack() {
+        top = -1;
+    }
+
+    bool isEmpty() {
+        return top == -1;
+    }
+
+    void push(string song) {
+        if (top == MAX_HISTORY - 1) {
+            cout << "History Stack is full " << endl;
+            return;
+        }
+
+        top++;
+        history[top] = song;
+    }
+
+    void pop() {
+        if (isEmpty()) {
+            cout << "History is empty " << endl;
+            return;
+        }
+
+        cout << "Removed: " << history[top] << endl;
+        top--;
+    }
+
+    void peek() {
+        if (isEmpty()) {
+            cout << "History is empty " << endl;
+            return;
+        }
+
+        cout << "Most recently played: " << history[top] << endl;
+    }
+
+    void display() {
+        if (isEmpty()) {
+            cout << "No songs have been played " << endl;
+            return;
+        }
+
+        cout << "Playback History: " << endl;
+
+        for (int i = top; i >= 0; i--) {
+            cout << history[i] << endl;
+        }
+    }
+};
+
+HistoryStack playbackHistory;
+
+//HISTORY STACK END
+
 
 
 //NON DATA STRUCTURE FUNCTIONS START: 25K-3067 Muhammad Abdul Alaam
@@ -58,6 +123,7 @@ void directPlay(string folder, string FileNamesArray[], int nfiles, ma_engine* e
         return;
     }
     ma_sound_start(&sound);
+    playbackHistory.push(filename);//<-----------------------------------------------------------------------STACK DATA STRUCTURE
     bool currentlyPlaying= true;
     clearScreen();
     cout << "Playing '"+filename+"'"<<endl;
@@ -264,6 +330,7 @@ class Playlist{
 			        return;
 			    }
 			    ma_sound_start(&sound);
+			    playbackHistory.push(curr->songname);//<-----------------------------------------------------------------------STACK DATA STRUCTURE
 			    bool currentlyPlaying= true;
 			    clearScreen();
 			    cout << "Playing '"+curr->songname+"'"<<endl;
@@ -509,11 +576,10 @@ string searchAsUserTypes(){//return the number user presses to select that song
 			searchTerm+=key;
 		}
 		
-	}while (key!=(char)27 && key!='\r');//27 = getch() of esc key, \r= enter
-	if (key=='\r'){
-		int songchoice= (int)key-'0';
-		cout<<"Enter the number of the song: ";
-		cin>>songchoice;
+	}while (key!=(char)27 && (key<'1' || key>'9'));//27 = getch() of esc key, otherwise check if a digit was pressed
+	if (key>='1' && key<='9'){
+		int songchoice;
+		songchoice= (int)key-'0';
 		if (songchoice>0 && songchoice<=SATCount){
 			return SATTitles[songchoice-1];
 		}else{
@@ -533,6 +599,7 @@ void playSearched(string folder, ma_engine* engine){
 	        return;
 	    }
 	    ma_sound_start(&sound);
+	    playbackHistory.push(filename);//<-----------------------------------------------------------------------STACK DATA STRUCTURE
 	    bool currentlyPlaying= true;
 	    clearScreen();
 	    cout << "Playing '"+filename+"'"<<endl;
@@ -626,70 +693,6 @@ void mergeSort(string arr[], int left, int right) {
 
 // Merge Sort End
 
-// History Stack
-
-#define MAX_HISTORY 100
-
-class HistoryStack {
-private:
-    string history[MAX_HISTORY];
-    int top;
-
-public:
-    HistoryStack() {
-        top = -1;
-    }
-
-    bool isEmpty() {
-        return top == -1;
-    }
-
-    void push(string song) {
-        if (top == MAX_HISTORY - 1) {
-            cout << "History Stack is full " << endl;
-            return;
-        }
-
-        top++;
-        history[top] = song;
-    }
-
-    void pop() {
-        if (isEmpty()) {
-            cout << "History is empty " << endl;
-            return;
-        }
-
-        cout << "Removed: " << history[top] << endl;
-        top--;
-    }
-
-    void peek() {
-        if (isEmpty()) {
-            cout << "History is empty " << endl;
-            return;
-        }
-
-        cout << "Most recently played: " << history[top] << endl;
-    }
-
-    void display() {
-        if (isEmpty()) {
-            cout << "No songs have been played " << endl;
-            return;
-        }
-
-        cout << "Playback History: " << endl;
-
-        for (int i = top; i >= 0; i--) {
-            cout << history[i] << endl;
-        }
-    }
-};
-
-HistoryStack playbackHistory;
-
-// History Stack ends
 
 //RAHIM's SECTION END
 
