@@ -693,6 +693,260 @@ void mergeSort(string arr[], int left, int right) {
 
 // Merge Sort End
 
+// PlayBackQueue starts
+
+#define MAX_QUEUE 100
+
+class PlayBackQueue {
+	private:
+		string queue[MAX_QUEUE];
+		int front;
+		int rear;
+		
+	public:
+		PlayBackQueue() {
+			front = 0;
+			rear = -1;
+		}
+		
+		bool isEmpty() {
+			if(rear == -1) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
+		bool isFull() {
+			if(rear == MAX_QUEUE - 1) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
+		bool enqueue(string song) {
+			if (isFull()) {
+				cout << "Playback Queue is full, please wait before your song to add another" << endl;
+				return false;
+			} else {
+				rear++;
+				queue[rear] = song;
+				cout << song << "The song has been added to your playlist " << endl;
+				return true;
+				
+			}
+		}
+		
+		string peek() {
+			if(isFull()) {
+				return " ";
+			} else {
+				return queue[front];
+			}
+		}
+		
+		void dequeue() {
+			if(isEmpty()) {
+				return ;
+			} else {
+				
+				for(int i = 0; i < rear; i++) { //It will shift the remaining of the songs to the left
+					queue[i] = queue[i+1];
+				}
+				rear--;
+				if(rear == -1) { 
+					front = 0;
+				}
+			}
+		}
+		
+		void display() {
+			if(isEmpty()) {
+				cout << "Queue is currently empty cannot display anything " << endl;
+			} else {
+				cout << "Playback Queue display is ready: " << endl;
+				for(int i = front; i <=rear; i++) {
+					cout << i - front + 1 << ". " << queue[i] << endl;
+				}
+			}
+			
+		}
+		
+		void playQueue(string folder, string FileNamesArray[],int nfiles, ma_engine* engine);
+		
+};
+PlayBackQueue playbackQueue;
+
+
+void playQueue(string folder, string FileNamesArray[],int nfiles, ma_engine* engine) {
+
+    while (!playbackQueue.isEmpty()) {
+
+        string filename = playbackQueue.peek();
+        string filepath = folder + "/" + filename;
+
+        ma_sound sound;
+
+        ma_result result = ma_sound_init_from_file(
+            engine, filepath.c_str(), 0, NULL, NULL, &sound
+        );
+
+        if (result != MA_SUCCESS) {
+            cout << "Sorry this cannot be played " << filename << endl;
+            playbackQueue.dequeue();
+            continue;
+        }
+
+        ma_sound_start(&sound);
+
+        playbackHistory.push(filename);
+
+        bool currentlyPlaying = true;
+
+        clearScreen();
+
+        cout << "Current Song playing; " << filename << endl;
+        cout << "Press SPACE key to pause or resume " << endl;
+        cout << "Press E key to add another song" << endl;
+
+        while (!ma_sound_at_end(&sound)) {
+
+            this_thread::sleep_for(chrono::milliseconds(50));
+
+            if (kbhit()) {
+
+                char keypress = _getch();
+
+                if (keypress == ' ') {
+
+                    if (currentlyPlaying) {
+                        ma_sound_stop(&sound);
+                        currentlyPlaying = false;
+                    }
+                    else {
+                        ma_sound_start(&sound);
+                        currentlyPlaying = true;
+                    }
+
+                }
+                else if (keypress == 'e' || keypress == 'E') {
+
+                    clearScreen();
+
+                    cout << "Current Available Songs are: " << endl;
+
+                    for (int i = 0; i < nfiles; i++) {
+                        cout << i + 1 << ". "
+                             << FileNamesArray[i] << endl;
+                    }
+
+                    cout << "Enter song number to add it, to the playlist: ";
+
+                    int songchoice;
+                    cin >> songchoice;
+
+                    if (songchoice >= 1 && songchoice <= nfiles) {
+                        playbackQueue.enqueue(
+                            FileNamesArray[songchoice - 1]
+                        );
+                    }
+                    else {
+                        cout << "Invalid song number, please write a proper song number " << endl;
+                    }
+
+                    cout << "Press Enter to continue playing ";
+                    cin.ignore(10000, '\n');
+                    cin.get();
+
+                    clearScreen();
+
+                    cout << "Curent Song Playing: " << filename << endl;
+                    cout << "Press SPACE key to pause or resume" << endl;
+                    cout << "Press E key to add another song" << endl;
+                }
+            }
+        }
+
+        ma_sound_uninit(&sound);
+
+        
+        playbackQueue.dequeue(); //This will remove the song only after the current song is finished
+    }
+
+    clearScreen();
+    cout << "Playback Queue finished " << endl;
+}
+
+void beginPlaybackQueue(string folder, string FileNamesArray[],int nfiles, ma_engine* engine) {
+	
+	int choice;
+	
+	do{
+		clearScreen();
+		
+		cout << "PlayBack Queue Start: " << endl;
+		cout << "1. Add a Song" << endl;
+		cout << "2. Play Queue" << endl;
+		cout << "3. Display Queue" << endl;
+		cout << "4. Return to main menu" << endl;
+		cout << "Enter choice" << endl;
+		cin >> choice;
+		
+		switch(choice) {
+			
+			case 1: {
+				clearScreen();
+				
+				cout << "Song Available: " << endl;
+				for(int i = 0; i < nfiles; i++) {
+					cout << i + 1 << ". "<< FileNamesArray[i] << endl;
+				}
+				cout << "Enter song number: ";
+				int songchoice;
+				cin >> songchoice;
+				if (songchoice >= 1 && songchoice <= nfiles) {
+					playbackQueue.enqueue(FileNamesArray[songchoice - 1]);
+					
+				} else {
+					cout << "Song number is invalid " << endl;
+				}
+				cout << "\nPress Enter to continue ";
+				cin.ignore(10000, '\n');
+				cin.get();
+			
+				break;
+			}
+			
+			case 2: {
+				playQueue(folder, FileNamesArray, nfiles, engine);
+				cout << "\nPress Enter to continue";
+				cin.ignore(10000, '\n');
+				cin.get();
+				break;
+			}
+			
+			case 3: {
+				clearScreen();
+				playbackQueue.display();
+				
+				cout << "\nPress Enter to continue";
+				cin.ignore(10000, '\n');
+				cin.get();
+				break;
+			}
+			
+			case 4: {
+				break;
+			}
+			
+			default:
+				cout << "Invalid choice " << endl;
+				break;
+		}
+	} while(choice !=4);
+}
+
 
 //RAHIM's SECTION END
 
@@ -747,7 +1001,8 @@ folder_initialization://label so if user changes music folder program can jump b
 		cout<<"4. Search and Play"<<endl;
 		cout<<"5. Sort By Name"<<endl;
 		cout<<"6. Playback History"<<endl;
-		cout<<"7. EXIT"<<endl;
+		cout<<"7. PlayBack Queue"<<endl;
+		cout<<"8. EXIT"<<endl;
 		cout<<endl<<"Enter choice: ";
 		cin>>choice;
 		getchar();
@@ -808,8 +1063,11 @@ folder_initialization://label so if user changes music folder program can jump b
 
 				} while (historyChoice != 4);
 				break;
+			case 7:
+				beginPlaybackQueue(folder, FileNamesArray, nfiles, &engine);
+				break;		
 		}
-	}while (choice!=7);
+	}while (choice!=8);
 	
 	
 	ma_engine_uninit(&engine);
