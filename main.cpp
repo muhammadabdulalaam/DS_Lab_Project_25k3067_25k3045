@@ -106,10 +106,9 @@ void directPlay(string folder, string FileNamesArray[], int nfiles, ma_engine* e
 	for (int i=0; i<nfiles; i++){
 		cout<<i+1<<"-"<<FileNamesArray[i]<<endl;
 	}
-	cout<<nfiles+1<<"- RETURN TO MAIN MENU"<<endl;
-	
+	cout<<endl;
 	int songchoice;//select song to play from lisr
-	cout<<"Enter song number to play"<<endl;
+	cout<<"Enter number of song to play it: "<<endl;
 	cin>>songchoice;
 	getchar();//remov \n leftover from cin
 	if (songchoice<1||songchoice>nfiles){
@@ -128,7 +127,7 @@ void directPlay(string folder, string FileNamesArray[], int nfiles, ma_engine* e
     clearScreen();
     cout << "Playing '"+filename+"'"<<endl;
 	cout<<"Press spacebar to pause/resume"<<endl;
-	cout<<"Press Q to stop playing"<<endl;
+	cout<<"Press ESC to stop playing"<<endl;
 	while(!ma_sound_at_end(&sound)){
     	this_thread::sleep_for(chrono::milliseconds(50)); //pause processing for small breaks or cpu will be burdened
     	if (kbhit()){
@@ -141,7 +140,7 @@ void directPlay(string folder, string FileNamesArray[], int nfiles, ma_engine* e
 					ma_sound_start(&sound);
 					currentlyPlaying=true;
 				}	
-			}else if(keypress=='q'||keypress=='Q'){
+			}else if(keypress==(char)27){
 				break;
 			}
 		}
@@ -335,7 +334,7 @@ class Playlist{
 			    clearScreen();
 			    cout << "Playing '"+curr->songname+"'"<<endl;
 				cout<<"Press spacebar to pause/resume"<<endl;
-				cout<<"Press Q to stop playing"<<endl;
+				cout<<"Press ESC to stop playing"<<endl;
 				cout<<"Press Arrow keys: < for previous song, > for next song"<<endl;
 				while(!ma_sound_at_end(&sound)){
 			    	this_thread::sleep_for(chrono::milliseconds(50)); //pause processing for small breaks or cpu will be burdened
@@ -349,7 +348,7 @@ class Playlist{
 								ma_sound_start(&sound);
 								currentlyPlaying=true;
 							}	
-						}else if(keypress=='q'||keypress=='Q'){
+						}else if(keypress==(char)27){
 							auto_forward=false;
 							break;
 						}else if(keypress==(char)0||keypress==(char)224){//since normal keys are between, must mean special key, so theres 2 bytes instead of 1
@@ -369,7 +368,7 @@ class Playlist{
 				}
 				ma_sound_uninit(&sound);
 				if (auto_forward)curr=curr->next;
-			}while (keypress!='Q' && keypress!='q');
+			}while (keypress!=(char)27);
 			
 		}
 };
@@ -402,21 +401,21 @@ void getExistingPlaylist(){
   
 
 void  beginPlaylist(string folder, string FileNamesArray[], int nfiles, ma_engine* engine){
-	int playlistChoice=0;
+	char playlistChoice;
 	do{                                                                 
 		clearScreen();
 		cout<<"Select playlist function:"<<endl;
 		cout<<"1. Play Playlist"<<endl;
 		cout<<"2. Add to playlist"<<endl;
 		cout<<"3. Remove from playlist"<<endl;
-		cout<<"4. RETURN TO MAIN MENU"<<endl;
-		cin>>playlistChoice;
-		getchar();
+		cout<<"PRESS ESC TO RETURN"<<endl;
+		playlistChoice= _getch();//cin>>playlistChoice;
+		//getchar();
 		switch (playlistChoice){
-			case 1:   
+			case '1':   
 				PL.play(folder, engine); 
 				break; 
-			case 2:
+			case '2':
 				cout<<"All Songs:"<<endl<<endl;//list song s
 				for (int i=0; i<nfiles; i++){
 					cout<<i+1<<"-"<<FileNamesArray[i]<<endl;
@@ -438,7 +437,7 @@ void  beginPlaylist(string folder, string FileNamesArray[], int nfiles, ma_engin
 				PL.insert(index-1, FileNamesArray[songchoice-1]);
 				savePlaylist();
 				break;
-			case 3:
+			case '3':
 				PL.display();
 				cout<<"Enter song number to delete"<<endl;
 				cin>>index;
@@ -449,7 +448,7 @@ void  beginPlaylist(string folder, string FileNamesArray[], int nfiles, ma_engin
 			
 			                                  
 		}           
-	}while(playlistChoice!=4);
+	}while(playlistChoice!=(char)27);
 }
 	             
 //PLAYLIST STRUCTURE END
@@ -568,8 +567,9 @@ string searchAsUserTypes(){//return the number user presses to select that song
 		for (int i=0; i<SATCount; i++){
 			cout<<i+1<<"- "<<SATTitles[i]<<endl;	
 		}
+		cout<<endl<<"PRESS ESC TO RETURN"<<endl;
 		key= _getch();
-		if (key==8 && searchTerm!=""){//8= getch() of backspace
+		if (key==(char)8 && searchTerm!=""){//8= getch() of backspace
 			searchTerm.pop_back();
 		}
 		if (key>='A' && key <='Z' || key>='a' && key<='z'|| key==' '){
@@ -604,7 +604,7 @@ void playSearched(string folder, ma_engine* engine){
 	    clearScreen();
 	    cout << "Playing '"+filename+"'"<<endl;
 		cout<<"Press spacebar to pause/resume"<<endl;
-		cout<<"Press Q to stop playing"<<endl;
+		cout<<"Press ESC to stop playing"<<endl;
 		while(!ma_sound_at_end(&sound)){
 	    	this_thread::sleep_for(chrono::milliseconds(50)); //pause processing for small breaks or cpu will be burdened
 	    	if (kbhit()){
@@ -617,7 +617,7 @@ void playSearched(string folder, ma_engine* engine){
 						ma_sound_start(&sound);
 						currentlyPlaying=true;
 					}	
-				}else if(keypress=='q'||keypress=='Q'){
+				}else if(keypress==(char)27){
 					break;
 				}
 			}
@@ -693,6 +693,261 @@ void mergeSort(string arr[], int left, int right) {
 
 // Merge Sort End
 
+// PlayBackQueue starts
+
+#define MAX_QUEUE 100
+
+class PlayBackQueue {
+	private:
+		string queue[MAX_QUEUE];
+		int front;
+		int rear;
+		
+	public:
+		PlayBackQueue() {
+			front = 0;
+			rear = -1;
+		}
+		
+		bool isEmpty() {
+			if(rear == -1) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
+		bool isFull() {
+			if(rear == MAX_QUEUE - 1) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
+		bool enqueue(string song) {
+			if (isFull()) {
+				cout << "Playback Queue is full, please wait before your song to add another" << endl;
+				return false;
+			} else {
+				rear++;
+				queue[rear] = song;
+				cout << song << "The song has been added to your playlist " << endl;
+				return true;
+				
+			}
+		}
+		
+		string peek() {
+			if(isFull()) {
+				return " ";
+			} else {
+				return queue[front];
+			}
+		}
+		
+		void dequeue() {
+			if(isEmpty()) {
+				return ;
+			} else {
+				
+				for(int i = 0; i < rear; i++) { //It will shift the remaining of the songs to the left
+					queue[i] = queue[i+1];
+				}
+				rear--;
+				if(rear == -1) { 
+					front = 0;
+				}
+			}
+		}
+		
+		void display() {
+			if(isEmpty()) {
+				cout << "Queue is currently empty cannot display anything " << endl;
+			} else {
+				cout << "Playback Queue display is ready: " << endl;
+				for(int i = front; i <=rear; i++) {
+					cout << i - front + 1 << ". " << queue[i] << endl;
+				}
+			}
+			
+		}
+		
+		void playQueue(string folder, string FileNamesArray[],int nfiles, ma_engine* engine);
+		
+};
+PlayBackQueue playbackQueue;
+
+
+void playQueue(string folder, string FileNamesArray[],int nfiles, ma_engine* engine) {
+
+    while (!playbackQueue.isEmpty()) {
+
+        string filename = playbackQueue.peek();
+        string filepath = folder + "/" + filename;
+
+        ma_sound sound;
+
+        ma_result result = ma_sound_init_from_file(
+            engine, filepath.c_str(), 0, NULL, NULL, &sound
+        );
+
+        if (result != MA_SUCCESS) {
+            cout << "Sorry this cannot be played " << filename << endl;
+            playbackQueue.dequeue();
+            continue;
+        }
+
+        ma_sound_start(&sound);
+
+        playbackHistory.push(filename);
+
+        bool currentlyPlaying = true;
+
+        clearScreen();
+
+        cout << "Current Song playing; " << filename << endl;
+        cout << "Press SPACE key to pause or resume " << endl;
+        cout << "Press E key to add another song" << endl;
+
+        while (!ma_sound_at_end(&sound)) {
+
+            this_thread::sleep_for(chrono::milliseconds(50));
+
+            if (kbhit()) {
+
+                char keypress = _getch();
+
+                if (keypress == ' ') {
+
+                    if (currentlyPlaying) {
+                        ma_sound_stop(&sound);
+                        currentlyPlaying = false;
+                    }
+                    else {
+                        ma_sound_start(&sound);
+                        currentlyPlaying = true;
+                    }
+
+                }
+                else if (keypress == 'e' || keypress == 'E') {
+
+                    clearScreen();
+
+                    cout << "Current Available Songs are: " << endl;
+
+                    for (int i = 0; i < nfiles; i++) {
+                        cout << i + 1 << ". "
+                             << FileNamesArray[i] << endl;
+                    }
+
+                    cout << "Enter song number to add it, to the playlist: ";
+
+                    int songchoice;
+                    cin >> songchoice;
+
+                    if (songchoice >= 1 && songchoice <= nfiles) {
+                        playbackQueue.enqueue(
+                            FileNamesArray[songchoice - 1]
+                        );
+                    }
+                    else {
+                        cout << "Invalid song number, please write a proper song number " << endl;
+                    }
+
+                    cout << "Press Enter to continue playing ";
+                    cin.ignore(10000, '\n');
+                    cin.get();
+
+                    clearScreen();
+
+                    cout << "Curent Song Playing: " << filename << endl;
+                    cout << "Press SPACE key to pause or resume" << endl;
+                    cout << "Press E key to add another song" << endl;
+                }
+            }
+        }
+
+        ma_sound_uninit(&sound);
+
+        
+        playbackQueue.dequeue(); //This will remove the song only after the current song is finished
+    }
+
+    clearScreen();
+    cout << "Playback Queue finished " << endl;
+}
+
+void beginPlaybackQueue(string folder, string FileNamesArray[],int nfiles, ma_engine* engine) {
+	
+	int choice;
+	
+	do{
+		clearScreen();
+		
+		cout << "PlayBack Queue Start: " << endl;
+		cout << "1. Add a Song" << endl;
+		cout << "2. Play Queue" << endl;
+		cout << "3. Display Queue" << endl;
+		cout << "4. Return to main menu" << endl;
+		cout << "Enter choice" << endl;
+		cin >> choice;
+		
+		switch(choice) {
+			
+			case 1: {
+				clearScreen();
+				
+				cout << "Song Available: " << endl;
+				for(int i = 0; i < nfiles; i++) {
+					cout << i + 1 << ". "<< FileNamesArray[i] << endl;
+				}
+				cout << "Enter song number: ";
+				int songchoice;
+				cin >> songchoice;
+				if (songchoice >= 1 && songchoice <= nfiles) {
+					playbackQueue.enqueue(FileNamesArray[songchoice - 1]);
+					
+				} else {
+					cout << "Song number is invalid " << endl;
+				}
+				cout << "\nPress Enter to continue ";
+				cin.ignore(10000, '\n');
+				cin.get();
+			
+				break;
+			}
+			
+			case 2: {
+				playQueue(folder, FileNamesArray, nfiles, engine);
+				cout << "\nPress Enter to continue";
+				cin.ignore(10000, '\n');
+				cin.get();
+				break;
+			}
+			
+			case 3: {
+				clearScreen();
+				playbackQueue.display();
+				
+				cout << "\nPress Enter to continue";
+				cin.ignore(10000, '\n');
+				cin.get();
+				break;
+			}
+			
+			case 4: {
+				break;
+			}
+			
+			default:
+				cout << "Invalid choice " << endl;
+				break;
+		}
+	} while(choice !=4);
+}
+
+
 
 //RAHIM's SECTION END
 
@@ -736,7 +991,7 @@ folder_initialization://label so if user changes music folder program can jump b
 	//TRIE INITIALIZATION END
 	
 	getExistingPlaylist();
-	int choice=0;
+	char choice;
 	cout<<"Welcome to Structured Sound!"<<endl<<endl;
 	
 	do {
@@ -747,31 +1002,31 @@ folder_initialization://label so if user changes music folder program can jump b
 		cout<<"4. Search and Play"<<endl;
 		cout<<"5. Sort By Name"<<endl;
 		cout<<"6. Playback History"<<endl;
-		cout<<"7. EXIT"<<endl;
-		cout<<endl<<"Enter choice: ";
-		cin>>choice;
-		getchar();
+		cout<<"7. PlayBack Queue"<<endl;
+		cout<<"PRESS ESC TO EXIT"<<endl;
+		cout<<endl<<"Press the number key of your choice"<<endl;
+		choice= _getch();
 		cout<<endl;
 		
 		switch (choice){
-			case 1:
+			case '1':
 				directPlay(folder, FileNamesArray, nfiles, &engine);
 				break;
-			case 2:
+			case '2':
 				beginPlaylist(folder,FileNamesArray, nfiles, &engine);
 				break;
-			case 3:
+			case '3':
 				saveFolder();
 				goto folder_initialization;
 				break;
-			case 4:
+			case '4':
 				playSearched(folder, &engine);
 				break;
-			case 5:
+			case '5':
 				mergeSort(FileNamesArray, 0, nfiles - 1); // Merge sort will sort via filename
 				cout<<"Sorted"<<endl;
 				break;
-			case 6:
+			case '6':
 				int historyChoice;
 				do {
 					clearScreen();
@@ -808,8 +1063,11 @@ folder_initialization://label so if user changes music folder program can jump b
 
 				} while (historyChoice != 4);
 				break;
+			case '7':
+				beginPlaybackQueue(folder, FileNamesArray, nfiles, &engine);
+				break;	
 		}
-	}while (choice!=7);
+	}while (choice!=(char)27);
 	
 	
 	ma_engine_uninit(&engine);
